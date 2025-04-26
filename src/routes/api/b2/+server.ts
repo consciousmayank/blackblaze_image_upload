@@ -180,93 +180,67 @@ async function getBucketId(authData: AuthResponse): Promise<string> {
 
 // Upload file to B2
 async function uploadToB2(uploadUrlData: UploadUrlResponse, file: File): Promise<{ fileName: string }> {
-  // Check if file has content
-  if (file.size === 0) {
-    throw new Error("File is empty - please upload a valid file");
-  }
+  try {
+    // Check if file has content
+    if (file.size === 0) {
+      throw new Error("File is empty - please upload a valid file");
+    }
 
-  // Generate a super-simple file name to avoid any encoding issues
-  const timestamp = new Date().getTime();
-  const extension = file.name.split('.').pop() || 'jpg';
-  const fileName = `file_${timestamp}.${extension}`;
-  
-  // Convert File to ArrayBuffer
-  const arrayBuffer = await file.arrayBuffer();
-  const fileBuffer = Buffer.from(arrayBuffer);
-  
-  // Calculate SHA1 hash
-  const hashHex = crypto.createHash('sha1').update(fileBuffer).digest('hex');
-  
-  // Prepare content length - required by B2
-  const contentLength = fileBuffer.length;
-  
-  // Enhanced debug logging
-  console.log('File details:', {
-    originalName: file.name,
-    newFileName: fileName,
-    fileType: file.type,
-    fileSize: contentLength,
-    emptySha1: hashHex === 'da39a3ee5e6b4b0d3255bfef95601890afd80709' // SHA1 of empty string
-  });
-  
-  // B2 absolutely requires URL-encoded file name
-  const encodedFileName = encodeURIComponent(fileName);
-  
-  // Log full request details for debugging
-  console.log('B2 upload request:', {
-    url: uploadUrlData.uploadUrl,
-    fileName: fileName,
-    encodedFileName: encodedFileName,
-    fileSize: contentLength,
-    sha1: hashHex,
-    contentType: file.type || 'application/octet-stream'
-  });
-  
-  // Upload to B2
-  const response = await fetch(uploadUrlData.uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': uploadUrlData.authorizationToken,
-      'X-Bz-File-Name': encodedFileName,
-      'Content-Type': file.type || 'application/octet-stream',
-      'Content-Length': contentLength.toString(),
-      'X-Bz-Content-Sha1': hashHex,
-      'X-Bz-Info-Author': 'Svelte Uploader'
-    },
-    body: fileBuffer
-  });
-  
-  // Additional debug info for response
-  console.log('B2 response status:', response.status, response.statusText);
-  
-  if (!response.ok) {
-    // Get error details from response
-    const errorText = await response.text();
-    let errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+    // Generate a simple filename with timestamp - NO URL ENCODING
+    const timestamp = new Date().getTime();
+    const fileName = `file_${timestamp}.${file.name.split('.').pop() || 'jpg'}`;
     
-    console.log('B2 error response text:', errorText);
+    console.log("Using simple filename:", fileName);
     
-    try {
-      const errorData = JSON.parse(errorText);
-      console.log('B2 error parsed:', errorData);
-      if (errorData.message) {
-        errorMessage += ` - ${errorData.message}`;
+    // Convert File to ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+    
+    // Calculate SHA1 hash
+    const hashHex = crypto.createHash('sha1').update(fileBuffer).digest('hex');
+    
+    console.log('Upload details:', {
+      fileName,
+      contentLength: fileBuffer.length,
+      sha1: hashHex
+    });
+    
+    // Important: Match the exact headers from the successful Postman request
+    // Note: NOT using encodeURIComponent on the fileName
+    const response = await fetch(uploadUrlData.uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': uploadUrlData.authorizationToken,
+        'X-Bz-File-Name': fileName, // NOT encoded - matches Postman
+        'Content-Type': file.type || 'application/octet-stream',
+        'Content-Length': fileBuffer.length.toString(),
+        'X-Bz-Content-Sha1': hashHex,
+        'X-Bz-Info-Author': 'SvelteUploader'
+      },
+      body: fileBuffer
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('B2 error response:', errorText);
+      let errorMessage = `B2 upload failed: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.message) errorMessage += ` - ${errorData.message}`;
+        if (errorData.code) errorMessage += ` (code: ${errorData.code})`;
+      } catch (e) {
+        errorMessage += ` - ${errorText} + ${e}`;
       }
-      if (errorData.code) {
-        errorMessage += ` (code: ${errorData.code})`;
-      }
-    } catch {
-      // If parsing fails, include the raw error text
-      errorMessage += ` - ${errorText.substring(0, 100)}`;
+      
+      throw new Error(errorMessage);
     }
     
-    console.error('B2 upload error:', errorMessage);
-    throw new Error(errorMessage);
+    const result = await response.json() as B2UploadResponse;
+    console.log('Upload success:', result);
+    return { fileName: result.fileName };
+  } catch (error) {
+    console.error('Upload exception:', error);
+    throw error;
   }
-  
-  const result = await response.json() as B2UploadResponse;
-  console.log('B2 success response:', result);
-  
-  // Return file name for building URL
-  return { fileName: result.fileName };
-} 
+}
