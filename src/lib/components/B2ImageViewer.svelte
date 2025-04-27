@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount, createEventDispatcher, tick } from 'svelte';
+  import { browser } from '$app/environment';
   import { getB2FileUrl, checkB2FileExists } from '../api';
   import type { LoadEventDetail, ErrorEventDetail } from '../types';
 
@@ -18,7 +19,7 @@
   let imageUrl: string = '';
   let imageLoaded: boolean = false;
   let progressValue: number = 0;
-  let progressInterval: ReturnType<typeof setInterval>;
+  let progressInterval: ReturnType<typeof setInterval> | undefined;
 
   // Event dispatcher for component events
   const dispatch = createEventDispatcher<{
@@ -26,10 +27,12 @@
     error: ErrorEventDetail;
   }>();
 
-  // Simulate progress animation
+  // Simulate progress animation - only run in browser
   function startProgressAnimation() {
+    if (!browser) return;
+    
     progressValue = 0;
-    clearInterval(progressInterval);
+    if (progressInterval) clearInterval(progressInterval);
     
     progressInterval = setInterval(() => {
       // Increase progress, but slow down as it approaches 90%
@@ -39,6 +42,14 @@
         progressValue += increment;
       }
     }, 300);
+  }
+
+  // Clean up intervals
+  function cleanupIntervals() {
+    if (browser && progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = undefined;
+    }
   }
 
   // Load the image
@@ -51,7 +62,10 @@
 
     error = '';
     isLoading = true;
-    startProgressAnimation();
+    
+    if (browser) {
+      startProgressAnimation();
+    }
 
     try {
       // Method 1: Use the library's API (direct client connection to B2)
@@ -80,7 +94,7 @@
       
       // Complete the progress
       progressValue = 100;
-      clearInterval(progressInterval);
+      cleanupIntervals();
       
       // Dispatch success event
       dispatch('load', { fileName });
@@ -88,7 +102,7 @@
       console.error('Image fetch error:', err);
       error = err instanceof Error ? err.message : 'Failed to load image';
       imageUrl = '';
-      clearInterval(progressInterval);
+      cleanupIntervals();
       
       // Dispatch error event
       dispatch('error', { error, fileName });
@@ -103,7 +117,7 @@
   }
 
   // Load image when fileName changes or on mount if autoLoad is true
-  $: if (fileName) {
+  $: if (browser && fileName) {
     if (autoLoad) {
       loadImage();
     } else {
@@ -113,12 +127,13 @@
   }
 
   onMount(() => {
+    // Run this only in the browser
     if (autoLoad && fileName) {
       loadImage();
     }
     
     return () => {
-      clearInterval(progressInterval);
+      cleanupIntervals();
     };
   });
 </script>
