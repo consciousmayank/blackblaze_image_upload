@@ -263,8 +263,8 @@ async function uploadToB2(uploadUrlData: UploadUrlResponse, file: File): Promise
         const errorData = JSON.parse(errorText);
         if (errorData.message) errorMessage += ` - ${errorData.message}`;
         if (errorData.code) errorMessage += ` (code: ${errorData.code})`;
-      } catch (e) {
-        errorMessage += ` - ${errorText}`;
+      } catch (e: unknown) {
+        errorMessage += ` - ${errorText} ${e}`;
       }
       
       throw new Error(errorMessage);

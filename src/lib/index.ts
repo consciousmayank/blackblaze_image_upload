@@ -2,6 +2,7 @@
 
 // Export components
 export { default as B2Uploader } from './components/B2Uploader.svelte';
+export { default as B2ImageViewer } from './components/B2ImageViewer.svelte';
 
 // Export types and utilities
 export type { B2Config } from './types';
