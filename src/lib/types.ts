@@ -37,8 +37,16 @@ export interface B2UploadResponse {
 
 // Upload result type
 export interface UploadResult {
-  success: boolean;
-  fileName?: string;
-  fileUrl?: string;
-  error?: string;
+  fileName: string;
+  fileUrl: string;
+}
+
+// Events
+export interface LoadEventDetail {
+  fileName: string;
+}
+
+export interface ErrorEventDetail {
+  error: string;
+  fileName: string;
 } 
