@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   
+  
   // State variables
   let selectedFile: File | null = null;
   let previewUrl: string | null = null;
