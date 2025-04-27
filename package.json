@@ -37,7 +37,7 @@
 		"lint": "prettier --check . && eslint ."
 	},
 	"peerDependencies": {
-		"svelte": "^4.0.0"
+		"svelte": "^4.0.0 || ^5.0.0"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
