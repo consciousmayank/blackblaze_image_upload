@@ -1,5 +1,5 @@
 <script lang="ts">
-	import B2ImageViewer from '../../components/B2ImageViewer.svelte';
+	import B2ImageViewer from '$lib/components/B2ImageViewer.svelte';
 
 	// Example of direct usage with a known filename
 	let knownFileName = 'file_1745714659529.jpeg';

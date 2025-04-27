@@ -17,12 +17,29 @@
   let error: string = '';
   let imageUrl: string = '';
   let imageLoaded: boolean = false;
+  let progressValue: number = 0;
+  let progressInterval: ReturnType<typeof setInterval>;
 
   // Event dispatcher for component events
   const dispatch = createEventDispatcher<{
     load: LoadEventDetail;
     error: ErrorEventDetail;
   }>();
+
+  // Simulate progress animation
+  function startProgressAnimation() {
+    progressValue = 0;
+    clearInterval(progressInterval);
+    
+    progressInterval = setInterval(() => {
+      // Increase progress, but slow down as it approaches 90%
+      // to simulate waiting for server response
+      if (progressValue < 90) {
+        const increment = 90 - progressValue > 30 ? 5 : 2;
+        progressValue += increment;
+      }
+    }, 300);
+  }
 
   // Load the image
   async function loadImage() {
@@ -34,6 +51,7 @@
 
     error = '';
     isLoading = true;
+    startProgressAnimation();
 
     try {
       // Method 1: Use the library's API (direct client connection to B2)
@@ -60,12 +78,17 @@
         imageUrl = apiUrl;
       }
       
+      // Complete the progress
+      progressValue = 100;
+      clearInterval(progressInterval);
+      
       // Dispatch success event
       dispatch('load', { fileName });
     } catch (err) {
       console.error('Image fetch error:', err);
       error = err instanceof Error ? err.message : 'Failed to load image';
       imageUrl = '';
+      clearInterval(progressInterval);
       
       // Dispatch error event
       dispatch('error', { error, fileName });
@@ -93,6 +116,10 @@
     if (autoLoad && fileName) {
       loadImage();
     }
+    
+    return () => {
+      clearInterval(progressInterval);
+    };
   });
 </script>
 
@@ -111,8 +138,13 @@
   
   {#if isLoading}
     <div class="loading">
-      <div class="spinner"></div>
-      <span>Loading image...</span>
+      <div class="progress-container">
+        <div class="progress-label">Loading image...</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: {progressValue}%"></div>
+        </div>
+        <div class="progress-percentage">{Math.round(progressValue)}%</div>
+      </div>
     </div>
   {/if}
   
@@ -136,7 +168,11 @@
       />
       {#if !imageLoaded}
         <div class="image-loading">
-          <div class="spinner"></div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill pulse"></div>
+            </div>
+          </div>
         </div>
       {/if}
     </div>
@@ -205,14 +241,51 @@
     border: 1px solid #ffcdd2;
   }
   
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 3px solid rgba(0, 0, 0, 0.1);
-    border-radius: 50%;
-    border-top-color: #3367d6;
-    animation: spin 1s ease-in-out infinite;
+  .progress-container {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  
+  .progress-label {
+    text-align: center;
     margin-bottom: 10px;
+    color: #555;
+    font-size: 14px;
+  }
+  
+  .progress-bar {
+    height: 6px;
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #4285f4;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-fill.pulse {
+    width: 100%;
+    background: linear-gradient(90deg, #4285f4 0%, #7fbaff 50%, #4285f4 100%);
+    background-size: 200% 100%;
+    animation: pulse-animation 1.5s infinite;
+  }
+  
+  .progress-percentage {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #555;
+  }
+  
+  @keyframes pulse-animation {
+    0% { background-position: 100% 0; }
+    100% { background-position: 0 0; }
   }
   
   .load-button {
@@ -232,17 +305,15 @@
     background-color: #3367d6;
   }
   
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
   .image-loading {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
   }
   
   .loaded .image-loading {
