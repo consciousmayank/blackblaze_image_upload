@@ -14,19 +14,19 @@ A Svelte/SvelteKit library for uploading and viewing images from Backblaze B2 cl
 ### Using npm
 
 ```bash
-npm install git+https://github.com/yourusername/b2-image-tools.git
+npm install git+https://github.com/consciousmayank/blackblaze_image_upload.git
 ```
 
 ### Using pnpm
 
 ```bash
-pnpm add git+https://github.com/yourusername/b2-image-tools.git
+pnpm add git+https://github.com/consciousmayank/blackblaze_image_upload.git
 ```
 
 ### Using yarn
 
 ```bash
-yarn add git+https://github.com/yourusername/b2-image-tools.git
+yarn add https://github.com/consciousmayank/blackblaze_image_upload.git
 ```
 
 ## Usage
