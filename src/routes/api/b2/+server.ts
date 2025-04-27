@@ -37,6 +37,43 @@ interface B2UploadResponse {
   uploadTimestamp: number;
 }
 
+export const GET: RequestHandler = async ({ url }) => {
+  try {
+    const fileName = url.searchParams.get('fileName');
+    
+    if (!fileName) {
+      return json({ error: 'File name is required' }, { status: 400 });
+    }
+    
+    console.log(`Attempting to download file: ${fileName}`);
+    
+    // Authenticate with B2
+    const authData = await authenticateB2();
+    
+    // Download the file
+    const fileData = await downloadFileFromB2(authData, fileName);
+    
+    // Set appropriate headers for the response
+    const response = new Response(fileData.body);
+    
+    if (fileData.contentType) {
+      response.headers.set('Content-Type', fileData.contentType);
+    }
+    
+    if (fileData.contentLength) {
+      response.headers.set('Content-Length', fileData.contentLength.toString());
+    }
+    
+    response.headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
+    
+    return response;
+  } catch (error: unknown) {
+    console.error('Download error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return json({ error: errorMessage || 'Download failed' }, { status: 500 });
+  }
+};
+
 export const POST: RequestHandler = async ({ request }) => {
   try {
     const contentType = request.headers.get('content-type') || '';
@@ -241,6 +278,42 @@ async function uploadToB2(uploadUrlData: UploadUrlResponse, file: File): Promise
     return { fileName: result.fileName };
   } catch (error) {
     console.error('Upload exception:', error);
+    throw error;
+  }
+}
+
+// Download file from B2
+async function downloadFileFromB2(authData: AuthResponse, fileName: string) {
+  try {
+    // Use the downloadUrl from the auth response
+    const downloadUrl = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${fileName}`;
+    
+    console.log(`Downloading from: ${downloadUrl}`);
+    
+    const response = await fetch(downloadUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': authData.authorizationToken
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('B2 download error response:', errorText);
+      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    }
+    
+    // Get content type and length from headers
+    const contentType = response.headers.get('Content-Type');
+    const contentLength = response.headers.get('Content-Length');
+    
+    return {
+      body: response.body,
+      contentType,
+      contentLength: contentLength ? parseInt(contentLength) : undefined
+    };
+  } catch (error) {
+    console.error('Download exception:', error);
     throw error;
   }
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
     
     // State variables
     let selectedFile: File | null = null;
@@ -8,7 +9,7 @@
     let uploadProgress = 0;
     let errorMessage = '';
     let uploadedFileUrl = '';
-    
+    let uploadedFileName = '';
     // Environment variables from Vercel
     const B2_BUCKET_NAME = "eeshstutiBucket";
     
@@ -26,6 +27,7 @@
         uploadProgress = 0;
         errorMessage = '';
         uploadedFileUrl = '';
+        uploadedFileName = '';
       }
     }
     
@@ -124,6 +126,7 @@
         // Success
         uploadStatus = 'success';
         uploadedFileUrl = result.fileUrl;
+        uploadedFileName = result.fileName;
       } catch (error: any) {
         uploadStatus = 'error';
         errorMessage = error.message || 'An error occurred during upload';
@@ -139,230 +142,111 @@
         }
       };
     });
+
+    function navigateToUpload() {
+      goto('/upload');
+    }
+
+    function navigateToDownload() {
+      goto('/download');
+    }
+    
+    function navigateToComponentExample() {
+      goto('/component-example');
+    }
   </script>
   
   <main class="container">
-    <h1>Backblaze B2 Image Uploader</h1>
+    <h1>Backblaze B2 File Operations</h1>
     
-    <div class="upload-container">
-      <div class="file-input-container">
-        <label for="file-input" class="file-input-label">
-          {#if previewUrl}
-            <img src={previewUrl || "/placeholder.svg"} alt="Selected image preview" class="image-preview" />
-          {:else}
-            <div class="placeholder">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-              <span>Select an image</span>
-            </div>
-          {/if}
-        </label>
-        <input 
-          id="file-input" 
-          type="file" 
-          accept="image/*" 
-          on:change={handleFileSelect} 
-          class="hidden-input"
-        />
-      </div>
+    <div class="button-container">
+      <button on:click={navigateToUpload} class="upload-btn">
+        Upload Image
+      </button>
       
-      {#if selectedFile}
-        <div class="file-info">
-          <p><strong>Selected file:</strong> {selectedFile.name}</p>
-          <p><strong>Size:</strong> {(selectedFile.size / 1024).toFixed(2)} KB</p>
-          <p><strong>Type:</strong> {selectedFile.type}</p>
-        </div>
-        
-        <button 
-          class="upload-button" 
-          on:click={uploadFile} 
-          disabled={uploadStatus === 'uploading'}
-        >
-          {#if uploadStatus === 'idle' || uploadStatus === 'error' || uploadStatus === 'success'}
-            Upload to Backblaze B2
-          {:else if uploadStatus === 'uploading'}
-            Uploading... {uploadProgress}%
-          {/if}
-        </button>
-        
-        <button class="test-button" on:click={testUpload}>
-          Test Upload (Debug)
-        </button>
-        
-        {#if uploadStatus === 'uploading'}
-          <div class="progress-container">
-            <div class="progress-bar" style="width: {uploadProgress}%"></div>
-          </div>
-        {/if}
-        
-        {#if uploadStatus === 'success'}
-          <div class="success-message">
-            <p>✅ File uploaded successfully!</p>
-            <a href={uploadedFileUrl} target="_blank" rel="noopener noreferrer">View uploaded file</a>
-          </div>
-        {/if}
-        
-        {#if uploadStatus === 'error'}
-          <div class="error-message">
-            <p>❌ {errorMessage}</p>
-          </div>
-        {/if}
-      {/if}
+      <button on:click={navigateToDownload} class="download-btn">
+        Download Image
+      </button>
+    </div>
+    
+    <div class="component-example-link">
+      <button on:click={navigateToComponentExample} class="example-btn">
+        Component Examples
+      </button>
     </div>
   </main>
   
   <style>
     .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 30px;
+      text-align: center;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     
     h1 {
-      text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 30px;
       color: #333;
     }
     
-    .upload-container {
+    .button-container {
       display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      background-color: #f9f9f9;
-      border-radius: 8px;
-      padding: 2rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      justify-content: space-around;
+      margin-top: 20px;
     }
     
-    .file-input-container {
-      display: flex;
-      justify-content: center;
-    }
-    
-    .file-input-label {
-      display: block;
-      width: 300px;
-      height: 200px;
-      border: 2px dashed #ccc;
-      border-radius: 8px;
-      cursor: pointer;
-      overflow: hidden;
-      transition: border-color 0.3s;
-    }
-    
-    .file-input-label:hover {
-      border-color: #0070f3;
-    }
-    
-    .hidden-input {
-      display: none;
-    }
-    
-    .placeholder {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #666;
-      gap: 0.5rem;
-    }
-    
-    .image-preview {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
-    .file-info {
-      background-color: #fff;
-      padding: 1rem;
-      border-radius: 6px;
-      border: 1px solid #eee;
-    }
-    
-    .file-info p {
-      margin: 0.5rem 0;
-    }
-    
-    .upload-button {
-      background-color: #0070f3;
-      color: white;
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
       border: none;
-      border-radius: 6px;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    
-    .upload-button:hover:not(:disabled) {
-      background-color: #0051a8;
-    }
-    
-    .upload-button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-    
-    .test-button {
-      background-color: #6b03fc;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    
-    .test-button:hover {
-      background-color: #5602c9;
-    }
-    
-    .progress-container {
-      width: 100%;
-      height: 10px;
-      background-color: #eee;
       border-radius: 5px;
-      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.3s;
+      font-weight: bold;
     }
     
-    .progress-bar {
-      height: 100%;
-      background-color: #0070f3;
-      transition: width 0.3s ease;
+    button:hover {
+      transform: translateY(-2px);
     }
     
-    .success-message {
-      background-color: #e6f7e6;
-      color: #2e7d32;
-      padding: 1rem;
-      border-radius: 6px;
-      border: 1px solid #c8e6c9;
+    .upload-btn {
+      background-color: #4285f4;
+      color: white;
     }
     
-    .success-message a {
-      color: #0070f3;
-      text-decoration: none;
+    .upload-btn:hover {
+      background-color: #3367d6;
     }
     
-    .success-message a:hover {
-      text-decoration: underline;
+    .download-btn {
+      background-color: #0f9d58;
+      color: white;
     }
     
-    .error-message {
-      background-color: #ffebee;
-      color: #c62828;
-      padding: 1rem;
-      border-radius: 6px;
-      border: 1px solid #ffcdd2;
+    .download-btn:hover {
+      background-color: #0b8043;
+    }
+    
+    .component-example-link {
+      margin-top: 20px;
+      text-align: center;
+    }
+    
+    .example-btn {
+      background-color: #9c27b0;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    
+    .example-btn:hover {
+      background-color: #7b1fa2;
+      transform: translateY(-2px);
     }
   </style>
