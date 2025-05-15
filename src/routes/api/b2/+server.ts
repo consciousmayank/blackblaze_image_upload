@@ -7,6 +7,15 @@ const B2_APPLICATION_KEY = "00563161c0b0cd87d7d2fad5ba01fbd7afb6e5b229";
 const B2_APPLICATION_ID = "b847e0c7428b";
 const B2_BUCKET_NAME = "eeshstutiBucket";
 
+// Add CORS headers to response
+function addCorsHeaders(response: Response): Response {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  response.headers.set('Access-Control-Max-Age', '86400');
+  return response;
+}
+
 // B2 API response interfaces
 interface AuthResponse {
   accountId: string;
@@ -37,12 +46,18 @@ interface B2UploadResponse {
   uploadTimestamp: number;
 }
 
+export const OPTIONS: RequestHandler = async () => {
+  const response = new Response(null, { status: 204 });
+  return addCorsHeaders(response);
+};
+
 export const GET: RequestHandler = async ({ url }) => {
   try {
     const fileName = url.searchParams.get('fileName');
     
     if (!fileName) {
-      return json({ error: 'File name is required' }, { status: 400 });
+      const errorResponse = json({ error: 'File name is required' }, { status: 400 });
+      return addCorsHeaders(errorResponse);
     }
     
     console.log(`Attempting to download file: ${fileName}`);
@@ -66,11 +81,12 @@ export const GET: RequestHandler = async ({ url }) => {
     
     response.headers.set('Content-Disposition', `attachment; filename="${fileName}"`);
     
-    return response;
+    return addCorsHeaders(response);
   } catch (error: unknown) {
     console.error('Download error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return json({ error: errorMessage || 'Download failed' }, { status: 500 });
+    const errorResponse = json({ error: errorMessage || 'Download failed' }, { status: 500 });
+    return addCorsHeaders(errorResponse);
   }
 };
 
@@ -95,11 +111,13 @@ export const POST: RequestHandler = async ({ request }) => {
         });
         
         if (!file) {
-          return json({ error: 'No file uploaded' }, { status: 400 });
+          const errorResponse = json({ error: 'No file uploaded' }, { status: 400 });
+          return addCorsHeaders(errorResponse);
         }
         
         if (file.size === 0) {
-          return json({ error: 'File is empty' }, { status: 400 });
+          const errorResponse = json({ error: 'File is empty' }, { status: 400 });
+          return addCorsHeaders(errorResponse);
         }
         
         // Upload file to B2
@@ -110,17 +128,20 @@ export const POST: RequestHandler = async ({ request }) => {
         
         const fileUrl = `https://f002.backblazeb2.com/file/${B2_BUCKET_NAME}/${uploadResult.fileName}`;
         
-        return json({
+        const successResponse = json({
           success: true,
           fileName: uploadResult.fileName,
           fileUrl
         });
+        return addCorsHeaders(successResponse);
       } catch (uploadError) {
         console.error('Error processing the upload:', uploadError);
         if (uploadError instanceof Error) {
-          return json({ error: uploadError.message }, { status: 500 });
+          const errorResponse = json({ error: uploadError.message }, { status: 500 });
+          return addCorsHeaders(errorResponse);
         }
-        return json({ error: 'Unknown upload error' }, { status: 500 });
+        const errorResponse = json({ error: 'Unknown upload error' }, { status: 500 });
+        return addCorsHeaders(errorResponse);
       }
     }
     
@@ -131,22 +152,26 @@ export const POST: RequestHandler = async ({ request }) => {
       if (action === 'authenticate') {
         // B2 Authentication
         const authData = await authenticateB2();
-        return json(authData);
+        const authResponse = json(authData);
+        return addCorsHeaders(authResponse);
       } 
       else if (action === 'getUploadUrl') {
         // Get upload URL
         const authData = await authenticateB2();
         const bucketId = await getBucketId(authData);
         const uploadUrlData = await getUploadUrl(authData, bucketId);
-        return json(uploadUrlData);
+        const urlResponse = json(uploadUrlData);
+        return addCorsHeaders(urlResponse);
       }
       
-      return json({ error: 'Invalid action' }, { status: 400 });
+      const errorResponse = json({ error: 'Invalid action' }, { status: 400 });
+      return addCorsHeaders(errorResponse);
     }
   } catch (error: unknown) {
     console.error('B2 API error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return json({ error: errorMessage || 'Server error' }, { status: 500 });
+    const errorResponse = json({ error: errorMessage || 'Server error' }, { status: 500 });
+    return addCorsHeaders(errorResponse);
   }
 };
 
